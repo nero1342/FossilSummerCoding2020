@@ -61,25 +61,38 @@ int main() {
     sort(setStar[best_gas].begin(), setStar[best_gas].end(), [&](int a, int b) {
         return TimeIn[belong_to[a]] > TimeIn[belong_to[b]];
     });
+    sort(setCandidateStar[best_gas].begin(), setCandidateStar[best_gas].end(), [&](int a, int b) {
+        return TimeIn[belong_to[a]] > TimeIn[belong_to[b]];
+    });
     
     
     // Trace the path from source -> gas -> star[1] -> gas -> star[2] -> ...
     //ofstream out("path.txt");
     int index_src = Index::encode(src);
-    while (setStar[best_gas].size()) {
-        int index_star = setStar[best_gas].back();
-        setStar[best_gas].pop_back();
-        vector<int> path = Solve(index_src, index_star, belong_to, par, h, par_gas, h_gas);
-        for (int i = 0; i < (int)path.size(); ++i) {
-            int id = path[i];
-            Point pt = Index::decode(id);
-            if (i == (int)path.size() - 1) {
-                if (setStar[best_gas].empty())
-                    cout << pt.x + 1 << ' ' << pt.y + 1 << '\n';
-            } else {
-                cout << pt.x + 1 << ' ' << pt.y + 1 << '\n';
+
+    auto From4rangersWithLove = [&](int index_src, vector<int>& setStar, bool skip_first_element = false) {
+        while (setStar.size()) {
+            int index_star = setStar.back();
+            setStar.pop_back();
+            vector<int> path = Solve(index_src, index_star, belong_to, par, h, par_gas, h_gas);
+            for (int i = 0; i < (int)path.size(); ++i) {
+                int id = path[i];
+                Point pt = Index::decode(id);
+                if (i == (int)path.size() - 1) {
+                    if (setStar.empty()) {
+                        if (!skip_first_element) 
+                            cout << pt.x + 1 << ' ' << pt.y + 1 << '\n';
+                    }
+                } else {
+                    if (!skip_first_element) 
+                        cout << pt.x + 1 << ' ' << pt.y + 1 << '\n';
+                }
+                skip_first_element = false;
             }
+            index_src = index_star;
         }
-        index_src = index_star;
-    }
+        return index_src;
+    };
+    index_src = From4rangersWithLove(index_src, setStar[best_gas]);
+    From4rangersWithLove(index_src, setCandidateStar[best_gas], true);
 }
