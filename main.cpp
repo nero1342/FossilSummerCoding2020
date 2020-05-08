@@ -5,7 +5,7 @@ using namespace std;
 #define WALL 0
 #define STREET 1
 #define GAS_STATION 2
-#define STAR 3 
+#define STAR 3
 const int dir_row[4] = {1, 0, -1, 0};
 const int dir_col[4] = {0, 1, 0, -1};
     
@@ -52,7 +52,7 @@ struct DisjointSetUnion{
         return true;
     }
 
-    vector<vector<int>> convert2vector() {
+    vector<vector<int>> convert2vector(const vector<Point>& mapping) {
         int num = 0;
         vector<int> g(f.size());
         for (int i = 0; i < (int)f.size(); ++i) if (f[i] < 0) {
@@ -60,7 +60,7 @@ struct DisjointSetUnion{
         }
         vector<vector<int>> result(num);
         for (int i = 0; i < (int)f.size(); ++i) {
-            result[g[root(i)]].push_back(i);
+            result[g[root(i)]].push_back(Index::encode(mapping[i]));
         }
         return result;
     }
@@ -68,18 +68,19 @@ struct DisjointSetUnion{
 
 
 /*
-Define A is the set(gas_station x) satisfy \forall x \exist y, dist(x, y) <= GAS_MAX 
+Define A is the set(gas_station x) satisfy \forall x \exist y, dist(x, y) <= GAS_MAX
 Return vector of A;
 */
-vector<vector<int>> merge_set_gas_station(vector<vector<int>> map, int m, int n, int GAS_MAX) {
+vector<vector<int>> merge_set_gas_station(const vector<vector<int>> &map, int m, int n, int GAS_MAX) {
     printf("Merging....");
     // for (int i = 0; i < m; ++i) {
     //     for (int j = 0; j < n; ++j) cout << map[i][j] << " \n"[j == n - 1];
     // }
     queue<Point> q;
     vector<int>dist(m * n, -1); // Dist of encode Point
-    vector<int>belong_to(m * n, -1); // Which union encode point belong to 
+    vector<int>belong_to(m * n, -1); // Which union encode point belong to
     int n_gas_station = 0;
+    vector<Point> gas_station;
     for (int i = 0; i < m; ++i) {
         for (int j = 0; j < n; ++j) if (map[i][j] == GAS_STATION) {
             printf("Dectected gas station %d at (%d, %d)\n", n_gas_station, i, j);
@@ -88,40 +89,45 @@ vector<vector<int>> merge_set_gas_station(vector<vector<int>> map, int m, int n,
             dist[index] = 0;
             belong_to[index] = n_gas_station;
             ++n_gas_station;
+            gas_station.push_back(Point(i, j));
         }
     }
     DisjointSetUnion * dsu = new DisjointSetUnion(n_gas_station);
     while (!q.empty()) {
         Point u = q.front(); q.pop();
         int index_u = Index::encode(u);
-        printf("At (%d, %d) with dist = %d:\n", u.x, u.y, dist[index_u]);
+        //printf("At (%d, %d) with dist = %d:\n", u.x, u.y, dist[index_u]);
         for (int i = 0; i < 4; ++i) {
             Point v = u.add_dir(i);
             int index_v = Index::encode(v);
-            if (index_v != -1) {
+            if (index_v != -1 && map[v.x][v.y] != WALL) {
                 if (dist[index_v] == -1) {
                     dist[index_v] = dist[index_u] + 1;
                     belong_to[index_v] = belong_to[index_u];
                     q.push(v);
-                    printf("--> New (%d, %d) with dist = %d\n", v.x, v.y, dist[index_v]);
+                    //printf("--> New (%d, %d) with dist = %d\n", v.x, v.y, dist[index_v]);
                 } else {
                     // dist(u) + 1 + dist(v) <= GAS_MAX
                     if (dist[index_u] + dist[index_v] < GAS_MAX) {
-                        printf("--> Merge %d and %d at (%d, %d)...", belong_to[index_u], belong_to[index_v], v.x, v.y);
-                        (dsu->Union(belong_to[index_u], belong_to[index_v])) ? 
-                            printf("Success\n") : printf("Fail, both are belong the same group\n");
-                    } 
+                        if (dsu->Union(belong_to[index_u], belong_to[index_v])) {
+                            printf("--> Merge %d and %d at (%d, %d)...", belong_to[index_u], belong_to[index_v], v.x, v.y);
+                            printf("Success\n");
+                        }
+                        // else {
+                        //     printf("Fail, both are belong the same group\n");
+                        // }
+                    }
                 }
             }
         }
     }
-    return dsu -> convert2vector();
+    return dsu -> convert2vector(gas_station);
 }
 
-vector<int> bfs_group_gas_station_to_star(int id, vector<int> set_gas, vector<vector<int>>map, int m, int n, int GAS_MAX, bool &reach_src, Point src) {
+vector<int> bfs_group_gas_station_to_star(int id, const vector<int> &set_gas, const vector<vector<int>>&map, int m, int n, int GAS_MAX, bool &reach_src, Point src) {
     printf("Finding star can be reached by group gas station %d...\n", id);
     int total_star = 0;
-    for (int i = 0; i < m; ++i) 
+    for (int i = 0; i < m; ++i)
         for (int j = 0; j < n; ++j) total_star += map[i][j] == STAR; // cout << map[i][j] << " \n"[j == n - 1];
 
     queue<Point> q;
@@ -134,20 +140,22 @@ vector<int> bfs_group_gas_station_to_star(int id, vector<int> set_gas, vector<ve
     while (!q.empty()) {
         Point u = q.front(); q.pop();
         int index_u = Index::encode(u);
-        printf("At (%d, %d) with dist = %d:\n", u.x, u.y, dist[index_u]);
         if (map[u.x][u.y] == STAR) {
-            star.push_back(index_u);
-            printf("-> Reach star %d...\n", (int)star.size());
+            if (dist[index_u] <= GAS_MAX / 2) {
+                printf("At (%d, %d) with dist = %d:\n", u.x, u.y, dist[index_u]);
+                star.push_back(index_u);
+                printf("-> Reach star %d...\n", (int)star.size());
+            }
         }
         if (u == src) reach_src = true;
         if (dist[index_u] == GAS_MAX) continue;
         for (int i = 0; i < 4; ++i) {
             Point v = u.add_dir(i);
             int index_v = Index::encode(v);
-            if (index_v != -1 && dist[index_v] == -1) {
+            if (index_v != -1 && map[v.x][v.y] != WALL && dist[index_v] == -1) {
                 dist[index_v] = dist[index_u] + 1;
                 q.push(v);
-                printf("--> New (%d, %d) with dist = %d\n", v.x, v.y, dist[index_v]);
+                //printf("--> New (%d, %d) with dist = %d\n", v.x, v.y, dist[index_v]);
             }
         }
     }
@@ -155,8 +163,114 @@ vector<int> bfs_group_gas_station_to_star(int id, vector<int> set_gas, vector<ve
     return star;
 }
 
+vector<vector<int>> build_graph_gas_and_star(const vector<int>& setGasStation, const vector<vector<int>>&map, int m, int n, int GAS_MAX, vector<int> &belong_to, vector<vector<int>>& graph_gas) {
+    graph_gas.resize(m * n);
+    belong_to.resize(m * n, -1);
+    vector<vector<int>> edge(m * n);
+    vector<int> dist(m * n, -1);
+    queue<Point> q;
+    for (int i = 0; i < (int)setGasStation.size(); ++i) {
+        auto x = setGasStation[i];
+        q.push(Index::decode(x));
+        dist[x] = 0;
+        belong_to[x] = x;
+    }
+    DisjointSetUnion * dsu = new DisjointSetUnion(m * n);
+    while (!q.empty()) {
+        Point u = q.front(); q.pop();
+        int index_u = Index::encode(u);
+        //printf("At (%d, %d) with dist = %d:\n", u.x, u.y, dist[index_u]);
+        for (int i = 0; i < 4; ++i) {
+            Point v = u.add_dir(i);
+            int index_v = Index::encode(v);
+            if (index_v != -1 && map[v.x][v.y] != WALL ) {
+                //Point uu = Index::decode(u), vv = Index::decode(u);
+                //printf("Edge connect (%d, %d) and (%d, %d)\n", u.x, u.y, v.x, v.y);
+                if (dist[index_v] == -1) {
+                    dist[index_v] = dist[index_u] + 1;
+                    q.push(v);
+                    belong_to[index_v] = belong_to[index_u];
+                    edge[index_u].push_back(index_v);
+                    edge[index_v].push_back(index_u);
+                    //printf("--> New (%d, %d) with dist = %d\n", v.x, v.y, dist[index_v]);
+                } else {
+                    if (dist[index_v] + dist[index_u] < GAS_MAX) {
+                        if (dsu -> Union(belong_to[index_u], belong_to[index_v])) {
+                            edge[index_u].push_back(index_v);
+                            edge[index_v].push_back(index_u);
+                            graph_gas[belong_to[index_u]].push_back(belong_to[index_v]);
+                            graph_gas[belong_to[index_v]].push_back(belong_to[index_u]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return edge;
+}
+
+void dfs(int u, const vector<vector<int>> &edge, vector<int>&par, vector<int>&h) {
+    if (u == 0) {
+        printf("Hihi");
+    }
+    for (int v : edge[u]) if (par[v] == -2) {
+        par[v] = u;
+        h[v] = h[u] + 1;
+        dfs(v, edge, par, h);
+    }
+}
+
+vector<int> operator+(const vector<int>&a, const vector<int> &b) {
+    vector<int> c;
+    for (int x:a) c.push_back(x);
+    for (int x:b) c.push_back(x);
+    return c;
+}
+void operator+=(vector<int>&a, const vector<int> &b) {
+    for (int x:b) a.push_back(x);
+}
+
+
+vector<int> Go(int src, int dest, const vector<int>& par, const vector<int>& h) {
+    vector<int> path, path2;
+    int x = src, y = dest;
+    while (x != y) {
+        if (h[x] <= h[y]) {
+            path2.push_back(y);
+            y = par[y];
+        } else {
+            path.push_back(x);
+            x = par[x];
+        }
+    }
+    path.push_back(x);
+    while (path2.size()) {
+        path.push_back(path2.back());
+        path2.pop_back();
+    }
+    //Point uu = Index::decode(src), vv = Index::decode(dest);
+    //printf("Go from (%d, %d) to (%d, %d) with %d steps\n", uu.x, uu.y, vv.x, vv.y, (int)path.size());
+    return path;
+};
+vector<int> Solve(int src, int dest, const vector<int> &belong_to,
+                const vector<int>&par, const vector<int>&h,
+                const vector<int>&par_gas, const vector<int>&h_gas) {
+    printf("Solve from %d to %d...", src, dest);
+    int nearest_src = belong_to[src], nearest_dest = belong_to[dest];
+    vector<int> path = Go(src, nearest_src, par, h); path.pop_back();
+    vector<int> p_gas = Go(nearest_src, nearest_dest, par_gas, h_gas);
+    for (int i = 0; i < (int)p_gas.size() - 1; ++i) {
+        int u = p_gas[i], v = p_gas[i + 1];
+        path += Go(u, v, par, h); path.pop_back();
+    }
+    path += Go(nearest_dest, dest, par, h);
+    printf("with %d steps\n", (int)path.size());
+    return path;
+}
+
 int main() {
-    // Initialize 
+    // Initialize
+    freopen("map_demo.txt","r",stdin);
     Point src;
     src.read();
     int GAS_MAX, m, n;
@@ -187,12 +301,39 @@ int main() {
         // Can optimize by bfs from src first, and just focus on group gas stations that can be reached.
         setStar[i] = bfs_group_gas_station_to_star(i, setGasStation[i], map, m, n, GAS_MAX, reach_src, src);
         if (!reach_src) continue;
-        setStar[i].push_back(Index::encode(src));
         if (best_gas == -1 || (setStar[i].size() > setStar[best_gas].size())) best_gas = i;
     }
     if (best_gas == -1) {
         printf("There is no gas station, need another solution.\n");
         return 0;
-    } 
-    printf("*Choose gas station %d\n", best_gas);   
+    }
+    printf("*Choose gas station %d\n", best_gas);
+    vector<int> belong_to;
+    vector<vector<int>> graph_gas;// Spanning tree of best gas
+    vector<vector<int>> edge = build_graph_gas_and_star(setGasStation[best_gas], map, m, n, GAS_MAX, belong_to, graph_gas);
+    vector<int> par(m * n, -2), h(m * n, 0), par_gas(m * n, -2), h_gas(m * n, 0);
+    par[setGasStation[best_gas][0]] = par_gas[setGasStation[best_gas][0]] = -1;
+    dfs(setGasStation[best_gas][0], edge, par, h);
+    dfs(setGasStation[best_gas][0], graph_gas, par_gas, h_gas);
+
+
+    ofstream out("path.txt");
+    int index_src = Index::encode(src);
+    while (setStar[best_gas].size()) {
+        int index_star = setStar[best_gas].back();
+        setStar[best_gas].pop_back();
+        vector<int> path = Solve(index_src, index_star, belong_to, par, h, par_gas, h_gas);
+        for (int i = 0; i < (int)path.size(); ++i) {
+            int id = path[i];
+            Point pt = Index::decode(id);
+            if (i == (int)path.size() - 1) {
+                if (setStar[best_gas].empty())
+                    out << pt.x + 1 << ' ' << pt.y + 1 << '\n';
+            } else {
+                out << pt.x + 1 << ' ' << pt.y + 1 << '\n';
+            }
+        }
+        index_src = index_star;
+    }
+    out.close();
 }
