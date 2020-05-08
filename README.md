@@ -1,1 +1,0 @@
-# FossilSummerCoding2020
