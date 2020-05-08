@@ -40,6 +40,10 @@ run: all
 	# Running...
 	$(MUTE)./bin/$(EXE)
 
+clean_o:
+	# Cleaning object files...
+	$(MUTE)rm $(VTAG) -f $(OBJECTS)	
+	
 clean:
 	# Cleaning object files...
 	$(MUTE)rm $(VTAG) -f $(OBJECTS)	
