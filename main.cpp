@@ -209,14 +209,13 @@ vector<vector<int>> build_graph_gas_and_star(const vector<int>& setGasStation, c
     return edge;
 }
 
-void dfs(int u, const vector<vector<int>> &edge, vector<int>&par, vector<int>&h) {
-    if (u == 0) {
-        printf("Hihi");
-    }
+void dfs(int u, const vector<vector<int>> &edge, vector<int>&par, vector<int>&h, vector<int>&TimeIn) {
+    static int cnt = 0;
+    TimeIn[u] = ++cnt;
     for (int v : edge[u]) if (par[v] == -2) {
         par[v] = u;
         h[v] = h[u] + 1;
-        dfs(v, edge, par, h);
+        dfs(v, edge, par, h, TimeIn);
     }
 }
 
@@ -312,11 +311,14 @@ int main() {
     vector<vector<int>> graph_gas;// Spanning tree of best gas
     vector<vector<int>> edge = build_graph_gas_and_star(setGasStation[best_gas], map, m, n, GAS_MAX, belong_to, graph_gas);
     vector<int> par(m * n, -2), h(m * n, 0), par_gas(m * n, -2), h_gas(m * n, 0);
-    par[setGasStation[best_gas][0]] = par_gas[setGasStation[best_gas][0]] = -1;
-    dfs(setGasStation[best_gas][0], edge, par, h);
-    dfs(setGasStation[best_gas][0], graph_gas, par_gas, h_gas);
-
-
+    par[belong_to[Index::encode(src)]] = par_gas[Index::encode(src)] = -1;
+    vector<int> TimeIn(m * n);
+    dfs(belong_to[Index::encode(src)], edge, par, h, TimeIn);
+    dfs(belong_to[Index::encode(src)], graph_gas, par_gas, h_gas, TimeIn);
+    sort(setStar[best_gas].begin(), setStar[best_gas].end(), [&](int a, int b) {
+        return TimeIn[belong_to[a]] > TimeIn[belong_to[b]];
+    });
+    // exit(0);
     ofstream out("path.txt");
     int index_src = Index::encode(src);
     while (setStar[best_gas].size()) {
