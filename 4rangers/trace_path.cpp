@@ -28,14 +28,14 @@ vector<int> Go(int src, int dest, const vector<int>& par, const vector<int>& h) 
         path2.pop_back();
     }
     //Point uu = Index::decode(src), vv = Index::decode(dest);
-    //fprintf(stderr,"Go from (%d, %d) to (%d, %d) with %d steps\n", uu.x, uu.y, vv.x, vv.y, (int)path.size());
+    ////fprintf(stderr,"Go from (%d, %d) to (%d, %d) with %d steps\n", uu.x, uu.y, vv.x, vv.y, (int)path.size());
     return path;
 };
 vector<int> Solve(int src, int dest, const vector<int> &belong_to,
                 const vector<int>&par, const vector<int>&h,
                 const vector<int>&par_gas, const vector<int>&h_gas) {
     Point uu = Index::decode(src), vv = Index::decode(dest);
-    fprintf(stderr,"Solve from (%d, %d) to (%d, %d)...", uu.x, uu.y, vv.x, vv.y);
+    //fprintf(stderr,"Solve from (%d, %d) to (%d, %d)...", uu.x, uu.y, vv.x, vv.y);
     int nearest_src = belong_to[src], nearest_dest = belong_to[dest];
     vector<int> path = Go(src, nearest_src, par, h); path.pop_back();
     vector<int> p_gas = Go(nearest_src, nearest_dest, par_gas, h_gas);
@@ -44,6 +44,6 @@ vector<int> Solve(int src, int dest, const vector<int> &belong_to,
         path += Go(u, v, par, h); path.pop_back();
     }
     path += Go(nearest_dest, dest, par, h);
-    fprintf(stderr,"with %d steps\n", (int)path.size());
+    //fprintf(stderr,"with %d steps\n", (int)path.size());
     return path;
 }

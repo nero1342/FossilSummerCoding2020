@@ -1,3 +1,3 @@
 make all
 make clean_o
-./bin/main < 'Data/map_demo.txt' > 'Data/path2.txt'
+./bin/main < 'Data/map_100_100.txt' > 'Data/path_100_100.txt'
