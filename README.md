@@ -1,4 +1,5 @@
 # FossilSummerCoding2020
+- Achieved second prize with team 4Rangers as a leader. [Link](https://www.facebook.com/FossilVietnamCareers/videos/240395520515493/)
 
 ### [Instruction](Instruction.pdf)
 
